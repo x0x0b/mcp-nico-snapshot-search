@@ -17,7 +17,7 @@ class SearchTarget(Enum):
     Enum for search targets.
 
     title: Search in the title.
-    description: Search in the description (may return unrelated results)..
+    description: Search in the description (may return unrelated results).
     tags: Search in the tags.
     """
 
@@ -56,7 +56,7 @@ class SortType(Enum):
 
 
 def request_api(
-    query: str, search_targets: list[SearchTarget], sort_type: SortType
+    query: str, search_targets: list[SearchTarget], sort_type: SortType, page: int
 ) -> dict:
     """
     Make a request to the NicoNico API and return the response.
@@ -69,12 +69,14 @@ def request_api(
     Returns:
         dict: The API response as a dictionary. Returns an empty list if an error occurs.
     """
+    page_limit = 10
     params = {
         "q": query,
         "targets": ",".join([target.value for target in search_targets]),
         "fields": "contentId,title,description,userId,viewCounter,mylistCounter,likeCounter,lengthSeconds,thumbnailUrl,startTime,lastResBody,commentCounter,lastCommentTime,tags,genre",
         "_sort": sort_type.value,
-        "_limit": 10,
+        "_limit": page_limit,
+        "_offset": (page - 1) * page_limit,
         "_context": APPLICATION_NAME,
     }
     headers = {
@@ -109,7 +111,9 @@ def append_url(data: dict) -> dict:
 
 
 @mcp.tool()
-def search(query: str, search_targets: list[SearchTarget], sort_type: SortType) -> dict:
+def search(
+    query: str, search_targets: list[SearchTarget], sort_type: SortType, page: int
+) -> dict:
     """
     Search for videos using the NicoNico API.
 
@@ -121,6 +125,7 @@ def search(query: str, search_targets: list[SearchTarget], sort_type: SortType) 
                      Phrase search: Wrap with double quotes. example: "keyword1 keyword2"
         search_targets (list[SearchTarget]): A list of search targets (e.g., title, tags).
         sort (SortType): The sorting type for the results.
+        page (int): The page number for pagination.
 
     Returns:
         dict: The search results with appended video URLs.
@@ -128,7 +133,7 @@ def search(query: str, search_targets: list[SearchTarget], sort_type: SortType) 
     Raises:
         ValueError: If the API response indicates an error.
     """
-    response = request_api(query, search_targets, sort_type)
+    response = request_api(query, search_targets, sort_type, page)
     if response.get("meta", {}).get("status", -1) != 200:
         raise ValueError(f"API Error: {response.get('meta', {}).get('message')}")
 
